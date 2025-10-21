@@ -76,11 +76,29 @@
             </div>
         </main>
 
+        <!-- Emotion Timeline Section -->
+        <section id="timelineSection" class="timeline-section" style="display: none;">
+            <div class="timeline-header">
+                <h3>📈 Emotion Timeline</h3>
+                <p>Your emotion journey during the detection session</p>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="emotionChart" width="800" height="400"></canvas>
+            </div>
+
+            <div class="timeline-controls">
+                <button id="downloadChart" class="btn btn-secondary">Download Chart</button>
+                <button id="clearTimeline" class="btn btn-outline">Clear Timeline</button>
+            </div>
+        </section>
+
         <footer>
             <p>Powered by TensorFlow & OpenCV | Built with Flask</p>
         </footer>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

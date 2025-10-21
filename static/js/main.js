@@ -13,11 +13,19 @@ class EmotionDetector {
         this.fpsEl = document.getElementById('fps');
         this.facesInfoEl = document.getElementById('facesInfo');
 
+        // Timeline elements
+        this.timelineSection = document.getElementById('timelineSection');
+        this.downloadChartBtn = document.getElementById('downloadChart');
+        this.clearTimelineBtn = document.getElementById('clearTimeline');
+
         this.stream = null;
         this.isDetecting = false;
         this.detectionInterval = null;
         this.fpsCounter = 0;
         this.lastFpsTime = Date.now();
+
+        // Chart tracking
+        this.emotionChart = null;
 
         this.setupEventListeners();
     }
@@ -26,6 +34,10 @@ class EmotionDetector {
         this.startBtn.addEventListener('click', () => this.startCamera());
         this.stopBtn.addEventListener('click', () => this.stopCamera());
         this.toggleDetection.addEventListener('click', () => this.toggleEmotionDetection());
+
+        // Timeline controls
+        this.downloadChartBtn.addEventListener('click', () => this.downloadChart());
+        this.clearTimelineBtn.addEventListener('click', () => this.clearTimeline());
     }
 
     async startCamera() {
@@ -87,10 +99,17 @@ class EmotionDetector {
         }
     }
 
-    startEmotionDetection() {
+    async startEmotionDetection() {
         this.isDetecting = true;
         this.toggleDetection.textContent = 'Stop Detection';
         this.updateStatus('Detecting emotions...', 'active');
+
+        // Start emotion tracking
+        try {
+            await fetch('/start_tracking', { method: 'POST' });
+        } catch (error) {
+            console.error('Failed to start tracking:', error);
+        }
 
         // Start detection loop at ~10 FPS
         this.detectionInterval = setInterval(() => {
@@ -98,13 +117,25 @@ class EmotionDetector {
         }, 100);
     }
 
-    stopEmotionDetection() {
+    async stopEmotionDetection() {
         this.isDetecting = false;
         this.toggleDetection.textContent = 'Start Detection';
 
         if (this.detectionInterval) {
             clearInterval(this.detectionInterval);
             this.detectionInterval = null;
+        }
+
+        // Stop emotion tracking and get timeline data
+        try {
+            const response = await fetch('/stop_tracking', { method: 'POST' });
+            const data = await response.json();
+
+            if (data.success && data.timeline.length > 0) {
+                this.displayTimeline(data.timeline);
+            }
+        } catch (error) {
+            console.error('Failed to stop tracking:', error);
         }
 
         this.clearOverlay();
@@ -290,6 +321,111 @@ class EmotionDetector {
         document.querySelectorAll('.emotion-percent').forEach(percent => {
             percent.textContent = '0%';
         });
+    }
+
+    displayTimeline(timeline) {
+        // Show timeline section
+        this.timelineSection.style.display = 'block';
+        this.timelineSection.scrollIntoView({ behavior: 'smooth' });
+
+        this.createEmotionChart(timeline);
+    }
+
+    createEmotionChart(timeline) {
+        // Destroy existing chart
+        if (this.emotionChart) {
+            this.emotionChart.destroy();
+        }
+
+        // Prepare data
+        const labels = timeline.map(point => `${point.timestamp.toFixed(1)}s`);
+        const emotionColors = {
+            happy: '#fbbf24',
+            sad: '#3b82f6',
+            neutral: '#6b7280',
+            surprised: '#8b5cf6'
+        };
+
+        // Create chart context
+        const chartCtx = document.getElementById('emotionChart').getContext('2d');
+
+        // Create datasets for each emotion
+        const datasets = Object.keys(emotionColors).map(emotion => ({
+            label: emotion.charAt(0).toUpperCase() + emotion.slice(1),
+            data: timeline.map(point => {
+                const value = (point.emotions[emotion] * 100);
+                return Math.max(0, Math.min(100, value));
+            }),
+            borderColor: emotionColors[emotion],
+            backgroundColor: emotionColors[emotion] + '20',
+            fill: false,
+            tension: 0.1,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            borderWidth: 2
+        }));
+
+        this.emotionChart = new Chart(chartCtx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Emotion Confidence Over Time'
+                    },
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        min: 0,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Confidence (%)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Time (seconds)'
+                        }
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                }
+            }
+        });
+    }
+
+    downloadChart() {
+        if (this.emotionChart) {
+            const link = document.createElement('a');
+            link.download = `emotion-timeline-${new Date().toISOString().slice(0, 10)}.png`;
+            link.href = this.emotionChart.toBase64Image();
+            link.click();
+        }
+    }
+
+    clearTimeline() {
+        if (confirm('Are you sure you want to clear the emotion timeline?')) {
+            this.timelineSection.style.display = 'none';
+            if (this.emotionChart) {
+                this.emotionChart.destroy();
+                this.emotionChart = null;
+            }
+        }
     }
 }
 

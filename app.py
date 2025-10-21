@@ -6,8 +6,16 @@ import base64
 from PIL import Image
 import io
 import json
+import time
+from datetime import datetime
+from collections import defaultdict
 
 app = Flask(__name__)
+
+# Emotion tracking storage
+emotion_timeline = []
+session_start_time = None
+tracking_active = False
 
 # Load the trained model
 MODEL_PATH = 'research/model_cnn_grayscale.keras'
@@ -94,6 +102,8 @@ def index():
 @app.route('/predict', methods=['POST'])
 def predict():
     """Handle emotion prediction requests"""
+    global emotion_timeline, session_start_time, tracking_active
+
     try:
         data = request.get_json()
         image_data = data.get('image')
@@ -102,10 +112,71 @@ def predict():
             return jsonify({'success': False, 'error': 'No image data provided'})
 
         result = detect_emotion(image_data)
+
+        # Track emotions if detection is active and faces are found
+        if tracking_active and result.get('success') and result.get('faces'):
+            current_time = time.time()
+            relative_time = current_time - session_start_time if session_start_time else 0
+
+            # Average emotions across all detected faces
+            avg_emotions = defaultdict(float)
+            face_count = len(result['faces'])
+
+            for face in result['faces']:
+                for emotion, prob in face['probabilities'].items():
+                    avg_emotions[emotion] += prob
+
+            # Calculate averages
+            for emotion in avg_emotions:
+                avg_emotions[emotion] /= face_count
+
+            # Store emotion data point
+            emotion_point = {
+                'timestamp': relative_time,
+                'datetime': datetime.now().isoformat(),
+                'emotions': dict(avg_emotions),
+                'face_count': face_count,
+                'dominant_emotion': max(avg_emotions.items(), key=lambda x: x[1])[0]
+            }
+            emotion_timeline.append(emotion_point)
+
         return jsonify(result)
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/start_tracking', methods=['POST'])
+def start_tracking():
+    """Start emotion tracking session"""
+    global emotion_timeline, session_start_time, tracking_active
+
+    emotion_timeline = []  # Reset timeline
+    session_start_time = time.time()
+    tracking_active = True
+
+    return jsonify({
+        'success': True,
+        'message': 'Emotion tracking started',
+        'start_time': datetime.now().isoformat()
+    })
+
+@app.route('/stop_tracking', methods=['POST'])
+def stop_tracking():
+    """Stop emotion tracking and return timeline data"""
+    global tracking_active, emotion_timeline
+
+    tracking_active = False
+
+    # Calculate session duration
+    session_duration = emotion_timeline[-1]['timestamp'] if emotion_timeline else 0
+
+    return jsonify({
+        'success': True,
+        'message': 'Emotion tracking stopped',
+        'timeline': emotion_timeline,
+        'duration': session_duration,
+        'total_frames': len(emotion_timeline)
+    })
 
 @app.route('/health')
 def health():
