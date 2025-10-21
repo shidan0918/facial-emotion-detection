@@ -14,7 +14,36 @@
         </header>
 
         <main>
-            <div class="camera-section">
+            <!-- Video Analysis Section -->
+            <div class="video-analysis-section">
+                <h3>🎥 Video Emotion Analysis</h3>
+                <p>Watch a video while we analyze your facial expressions in real-time</p>
+
+                <div class="video-container-wrapper">
+                    <div class="video-embed">
+                        <div id="youtube-player"></div>
+                    </div>
+                    <div class="camera-preview">
+                        <div class="video-container">
+                            <video id="video" autoplay muted playsinline></video>
+                            <canvas id="canvas" style="display: none;"></canvas>
+                            <div id="overlay" class="overlay"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="video-controls">
+                    <button id="startCameraVideo" class="btn btn-accent">Start Camera</button>
+                    <button id="stopCameraVideo" class="btn btn-secondary" disabled>Stop Camera</button>
+                    <button id="startVideoAnalysis" class="btn btn-primary" disabled>Start Video Analysis</button>
+                    <button id="stopVideoAnalysis" class="btn btn-secondary" disabled>Stop Analysis</button>
+                    <div class="sync-status">
+                        <span id="syncStatus" class="status">Start camera first</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="camera-section" style="display: none;">
                 <div class="video-container">
                     <video id="video" autoplay muted playsinline></video>
                     <canvas id="canvas" style="display: none;"></canvas>
@@ -98,6 +127,7 @@
         </footer>
     </div>
 
+    <script src="https://www.youtube.com/iframe_api"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>

@@ -18,6 +18,13 @@ class EmotionDetector {
         this.downloadChartBtn = document.getElementById('downloadChart');
         this.clearTimelineBtn = document.getElementById('clearTimeline');
 
+        // Video analysis elements
+        this.startCameraVideoBtn = document.getElementById('startCameraVideo');
+        this.stopCameraVideoBtn = document.getElementById('stopCameraVideo');
+        this.startVideoAnalysisBtn = document.getElementById('startVideoAnalysis');
+        this.stopVideoAnalysisBtn = document.getElementById('stopVideoAnalysis');
+        this.syncStatusEl = document.getElementById('syncStatus');
+
         this.stream = null;
         this.isDetecting = false;
         this.detectionInterval = null;
@@ -26,6 +33,11 @@ class EmotionDetector {
 
         // Chart tracking
         this.emotionChart = null;
+
+        // Video analysis tracking
+        this.youtubePlayer = null;
+        this.videoStartTime = null;
+        this.isVideoAnalysis = false;
 
         this.setupEventListeners();
     }
@@ -38,6 +50,12 @@ class EmotionDetector {
         // Timeline controls
         this.downloadChartBtn.addEventListener('click', () => this.downloadChart());
         this.clearTimelineBtn.addEventListener('click', () => this.clearTimeline());
+
+        // Video analysis controls
+        this.startCameraVideoBtn.addEventListener('click', () => this.startCameraForVideo());
+        this.stopCameraVideoBtn.addEventListener('click', () => this.stopCameraForVideo());
+        this.startVideoAnalysisBtn.addEventListener('click', () => this.startVideoAnalysis());
+        this.stopVideoAnalysisBtn.addEventListener('click', () => this.stopVideoAnalysis());
     }
 
     async startCamera() {
@@ -89,6 +107,59 @@ class EmotionDetector {
         this.updateFPS(0);
         this.updateFacesInfo('No faces detected');
         this.resetEmotionBars();
+    }
+
+    async startCameraForVideo() {
+        try {
+            this.updateSyncStatus('Starting camera...', 'active');
+
+            this.stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    facingMode: 'user'
+                }
+            });
+
+            this.video.srcObject = this.stream;
+
+            this.video.onloadedmetadata = () => {
+                this.canvas.width = this.video.videoWidth;
+                this.canvas.height = this.video.videoHeight;
+            };
+
+            this.startCameraVideoBtn.disabled = true;
+            this.stopCameraVideoBtn.disabled = false;
+            this.startVideoAnalysisBtn.disabled = false;
+
+            this.updateSyncStatus('Camera ready - now start video analysis', '');
+
+        } catch (error) {
+            console.error('Camera access failed:', error);
+            this.updateSyncStatus('Camera access failed', 'error');
+        }
+    }
+
+    stopCameraForVideo() {
+        if (this.stream) {
+            this.stream.getTracks().forEach(track => track.stop());
+            this.stream = null;
+        }
+
+        this.video.srcObject = null;
+        this.clearOverlay();
+
+        this.startCameraVideoBtn.disabled = false;
+        this.stopCameraVideoBtn.disabled = true;
+        this.startVideoAnalysisBtn.disabled = true;
+        this.stopVideoAnalysisBtn.disabled = true;
+
+        // Stop any ongoing analysis
+        if (this.isVideoAnalysis) {
+            this.stopVideoAnalysis();
+        }
+
+        this.updateSyncStatus('Camera stopped', '');
     }
 
     toggleEmotionDetection() {
@@ -427,7 +498,230 @@ class EmotionDetector {
             }
         }
     }
+
+    // Video Analysis Methods
+    async startVideoAnalysis() {
+        try {
+            // Check if camera is already running, if not, return early
+            if (!this.stream) {
+                this.updateSyncStatus('Please start camera first', 'error');
+                return;
+            }
+
+            // Initialize YouTube player if not already done
+            if (!this.youtubePlayer) {
+                this.initializeYouTubePlayer();
+                return; // Player will call this method again once ready
+            }
+
+            this.isVideoAnalysis = true;
+            this.startVideoAnalysisBtn.disabled = true;
+            this.stopVideoAnalysisBtn.disabled = false;
+
+            this.updateSyncStatus('Starting synchronized analysis...', 'active');
+
+            // Start emotion tracking
+            await fetch('/start_tracking', { method: 'POST' });
+            this.videoStartTime = Date.now();
+
+            // Start detection loop
+            this.detectionInterval = setInterval(() => {
+                this.detectEmotions();
+            }, 100);
+
+            // Start video playback
+            if (this.youtubePlayer && this.youtubePlayer.playVideo) {
+                this.youtubePlayer.playVideo();
+            }
+
+            this.updateSyncStatus('Recording emotions while video plays', 'active');
+
+        } catch (error) {
+            console.error('Error starting video analysis:', error);
+            this.updateSyncStatus('Error starting analysis', 'error');
+        }
+    }
+
+    async stopVideoAnalysis() {
+        this.isVideoAnalysis = false;
+        this.startVideoAnalysisBtn.disabled = false;
+        this.stopVideoAnalysisBtn.disabled = true;
+
+        // Stop video playback
+        if (this.youtubePlayer && this.youtubePlayer.pauseVideo) {
+            this.youtubePlayer.pauseVideo();
+        }
+
+        // Stop detection
+        if (this.detectionInterval) {
+            clearInterval(this.detectionInterval);
+            this.detectionInterval = null;
+        }
+
+        // Stop tracking and get timeline data
+        try {
+            const response = await fetch('/stop_tracking', { method: 'POST' });
+            const data = await response.json();
+
+            if (data.success && data.timeline.length > 0) {
+                this.displayVideoTimeline(data.timeline, data.happy_score);
+            }
+        } catch (error) {
+            console.error('Failed to stop tracking:', error);
+        }
+
+        this.updateSyncStatus('Analysis complete - view timeline below', '');
+    }
+
+    initializeYouTubePlayer() {
+        this.youtubePlayer = new YT.Player('youtube-player', {
+            height: '100%',
+            width: '100%',
+            videoId: 'eVMNvm67Y-A', // YouTube Shorts video ID
+            playerVars: {
+                'autoplay': 0,
+                'controls': 1,
+                'modestbranding': 1,
+                'rel': 0
+            },
+            events: {
+                'onReady': (event) => {
+                    console.log('YouTube player ready');
+                    this.updateSyncStatus('Video ready - click Start Video Analysis', '');
+                },
+                'onStateChange': (event) => {
+                    this.onYouTubePlayerStateChange(event);
+                }
+            }
+        });
+    }
+
+    onYouTubePlayerStateChange(event) {
+        // YouTube player states: -1 (unstarted), 0 (ended), 1 (playing), 2 (paused), 3 (buffering), 5 (cued)
+        if (event.data === YT.PlayerState.ENDED && this.isVideoAnalysis) {
+            // Video ended, stop analysis
+            this.stopVideoAnalysis();
+        } else if (event.data === YT.PlayerState.PAUSED && this.isVideoAnalysis) {
+            // Video paused, pause emotion detection
+            if (this.detectionInterval) {
+                clearInterval(this.detectionInterval);
+                this.detectionInterval = null;
+            }
+            this.updateSyncStatus('Video paused - emotion tracking paused', 'warning');
+        } else if (event.data === YT.PlayerState.PLAYING && this.isVideoAnalysis) {
+            // Video resumed, resume emotion detection
+            if (!this.detectionInterval) {
+                this.detectionInterval = setInterval(() => {
+                    this.detectEmotions();
+                }, 100);
+            }
+            this.updateSyncStatus('Recording emotions while video plays', 'active');
+        }
+    }
+
+    displayVideoTimeline(timeline, happyScore = null) {
+        // Show timeline section
+        this.timelineSection.style.display = 'block';
+        this.timelineSection.scrollIntoView({ behavior: 'smooth' });
+
+        // Update header with happy score if provided
+        if (happyScore !== null) {
+            const headerEl = this.timelineSection.querySelector('.timeline-header p');
+            headerEl.innerHTML = `Your emotion journey during the detection session<br><strong>🎭 Total Happy Score: ${happyScore}%</strong> of the video`;
+        }
+
+        this.createVideoSyncChart(timeline);
+    }
+
+    createVideoSyncChart(timeline) {
+        // Destroy existing chart
+        if (this.emotionChart) {
+            this.emotionChart.destroy();
+        }
+
+        // Prepare data with video timeline sync
+        const labels = timeline.map(point => `${point.timestamp.toFixed(1)}s`);
+        const emotionColors = {
+            happy: '#fbbf24',
+            sad: '#3b82f6',
+            neutral: '#6b7280',
+            surprised: '#8b5cf6'
+        };
+
+        // Create chart context
+        const chartCtx = document.getElementById('emotionChart').getContext('2d');
+
+        // Create datasets for each emotion
+        const datasets = Object.keys(emotionColors).map(emotion => ({
+            label: emotion.charAt(0).toUpperCase() + emotion.slice(1),
+            data: timeline.map(point => {
+                const value = (point.emotions[emotion] * 100);
+                return Math.max(0, Math.min(100, value));
+            }),
+            borderColor: emotionColors[emotion],
+            backgroundColor: emotionColors[emotion] + '20',
+            fill: false,
+            tension: 0.1,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            borderWidth: 2
+        }));
+
+        this.emotionChart = new Chart(chartCtx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Your Emotional Response to Video Over Time'
+                    },
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        min: 0,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Emotion Confidence (%)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Video Time (seconds)'
+                        }
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                }
+            }
+        });
+    }
+
+    updateSyncStatus(message, className = '') {
+        this.syncStatusEl.textContent = message;
+        this.syncStatusEl.className = `status ${className}`;
+    }
 }
+
+// YouTube API callback
+window.onYouTubeIframeAPIReady = function() {
+    console.log('YouTube IFrame API Ready');
+    // The player will be initialized when needed
+};
 
 // Initialize the emotion detector when the page loads
 document.addEventListener('DOMContentLoaded', () => {

@@ -73,6 +73,80 @@ main {
     align-items: start;
 }
 
+/* Video Analysis Section */
+.video-analysis-section {
+    background: var(--surface-color);
+    border-radius: var(--border-radius-lg);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+}
+
+.video-analysis-section h3 {
+    text-align: center;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+}
+
+.video-analysis-section p {
+    text-align: center;
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.video-container-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.video-embed {
+    position: relative;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    background: #000;
+    aspect-ratio: 9/16; /* YouTube Shorts aspect ratio */
+}
+
+.video-embed #youtube-player {
+    width: 100%;
+    height: 100%;
+}
+
+.camera-preview {
+    position: relative;
+}
+
+.camera-preview .video-container {
+    aspect-ratio: 4/3;
+}
+
+.video-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.sync-status {
+    margin-left: 1rem;
+}
+
+@media (max-width: 768px) {
+    .video-container-wrapper {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .video-embed {
+        aspect-ratio: 16/9; /* More mobile-friendly for smaller screens */
+    }
+}
+
 /* Camera Section */
 .camera-section {
     background: var(--surface-color);

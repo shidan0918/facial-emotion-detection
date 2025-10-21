@@ -170,12 +170,19 @@ def stop_tracking():
     # Calculate session duration
     session_duration = emotion_timeline[-1]['timestamp'] if emotion_timeline else 0
 
+    # Calculate total happy score (percentage of time in happy state)
+    happy_score = 0.0
+    if emotion_timeline:
+        happy_frames = sum(1 for point in emotion_timeline if point['dominant_emotion'] == 'happy')
+        happy_score = (happy_frames / len(emotion_timeline)) * 100
+
     return jsonify({
         'success': True,
         'message': 'Emotion tracking stopped',
         'timeline': emotion_timeline,
         'duration': session_duration,
-        'total_frames': len(emotion_timeline)
+        'total_frames': len(emotion_timeline),
+        'happy_score': round(happy_score, 1)
     })
 
 @app.route('/health')
