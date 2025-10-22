@@ -98,9 +98,11 @@ main {
 
 .video-container-wrapper {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 2fr 1fr;
     gap: 2rem;
     margin-bottom: 2rem;
+    align-items: center;
+    justify-items: center;
 }
 
 .video-embed {
@@ -109,6 +111,9 @@ main {
     overflow: hidden;
     background: #000;
     aspect-ratio: 9/16; /* YouTube Shorts aspect ratio */
+    width: 100%;
+    max-width: 400px;
+    justify-self: center;
 }
 
 .video-embed #youtube-player {
@@ -118,10 +123,17 @@ main {
 
 .camera-preview {
     position: relative;
+    width: 100%;
+    max-width: 300px;
+    opacity: 0.9;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
 }
 
 .camera-preview .video-container {
     aspect-ratio: 4/3;
+    width: 100%;
 }
 
 .video-controls {
