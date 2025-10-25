@@ -180,3 +180,4 @@ yarn-error.log*
 
 # Large data files (too big for GitHub - over 100MB limit)
 data/*.h5
+research/Reference_Notebook_Facial_Emotion_Detection_Full_Code (5).ipynb
