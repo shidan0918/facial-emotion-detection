@@ -1,15 +1,19 @@
-# GPU-enabled Dockerfile for emotion detection
+# Dockerfile for emotion detection on Hugging Face Spaces
 FROM python:3.13-slim
 
-# Install system dependencies
+# Install system dependencies for OpenCV
 RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
     libxrender-dev \
     libgomp1 \
-    libglib2.0-0 \
     libgtk-3-0 \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    ffmpeg \
+    libsm6 \
+    libxext6 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
