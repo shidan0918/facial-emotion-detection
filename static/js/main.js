@@ -43,9 +43,16 @@ class EmotionDetector {
     }
 
     setupEventListeners() {
-        this.startBtn.addEventListener('click', () => this.startCamera());
-        this.stopBtn.addEventListener('click', () => this.stopCamera());
-        this.toggleDetection.addEventListener('click', () => this.toggleEmotionDetection());
+        // Old camera controls (only if they exist for backwards compatibility)
+        if (this.startBtn) {
+            this.startBtn.addEventListener('click', () => this.startCamera());
+        }
+        if (this.stopBtn) {
+            this.stopBtn.addEventListener('click', () => this.stopCamera());
+        }
+        if (this.toggleDetection) {
+            this.toggleDetection.addEventListener('click', () => this.toggleEmotionDetection());
+        }
 
         // Timeline controls
         this.downloadChartBtn.addEventListener('click', () => this.downloadChart());
