@@ -1,3 +1,13 @@
+---
+title: Facial Emotion Detection
+emoji: 🎭
+colorFrom: blue
+colorTo: purple
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Live Facial Emotion Detection Website
 
 A real-time facial emotion detection website built with Flask, TensorFlow, and OpenCV. This application uses your trained CNN model to detect emotions (happy, sad, neutral, surprised) from live camera feed.

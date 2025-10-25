@@ -24,12 +24,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Expose port
-EXPOSE 8080
+# Expose port (Hugging Face Spaces uses 7860)
+EXPOSE 7860
 
 # Set environment variables
 ENV FLASK_ENV=production
-ENV PORT=8080
+ENV PORT=7860
 
 # Run the application
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8080", "--timeout", "120", "--workers", "1"]
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:7860", "--timeout", "120", "--workers", "1"]
